@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizMaster — Anglais · Maths · Chimie · Informatique</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --surface: #111118;
+            --border: #1e1e2e;
+            --text: #e8e8f0;
+            --muted: #6b6b8a;
+            --accent-en: #00d4ff;
+            --accent-math: #ff6b35;
+            --accent-chem: #a8ff78;
+            --accent-info: #c084fc;
+            --correct: #4ade80;
+            --wrong: #f87171;
+            --radius: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Syne', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+        }
+
+        .page { display: none; }
+        .page.active { display: flex; }
+
+        /* ===== HOME ===== */
+        #home {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .logo {
+            font-size: clamp(3rem, 8vw, 5.5rem);
+            font-weight: 800;
+            letter-spacing: -3px;
+            background: linear-gradient(135deg, #fff 0%, var(--muted) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .tagline {
+            color: var(--muted);
+            font-size: 1rem;
+            font-family: 'DM Mono', monospace;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 60px;
+        }
+
+        .name-input-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 48px;
+            width: 100%;
+            max-width: 360px;
+        }
+
+        .name-input-wrap label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--muted);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .name-input-wrap input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 20px;
+            color: var(--text);
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color .2s;
+        }
+        .name-input-wrap input:focus { border-color: rgba(255,255,255,.3); }
+        .name-input-wrap input::placeholder { color: var(--muted); }
+
+        .categories {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        .cat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px 24px;
+            cursor: pointer;
+            transition: all .25s cubic-bezier(.4,0,.2,1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cat-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--card-color);
+            opacity: 0;
+            transition: opacity .25s;
+        }
+
+        .cat-card:hover { transform: translateY(-4px); border-color: var(--card-color); }
+        .cat-card:hover::before { opacity: .06; }
+
+        .cat-card .icon { font-size: 2.4rem; margin-bottom: 14px; display: block; }
+        .cat-card .cat-name { font-size: 1.2rem; font-weight: 700; color: var(--card-color); margin-bottom: 6px; }
+        .cat-card .cat-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+        .cat-card .cat-count { position: absolute; top: 18px; right: 18px; font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--muted); }
+
+        .cat-card[data-cat="ANGLAIS"]       { --card-color: var(--accent-en); }
+        .cat-card[data-cat="MATHEMATIQUES"] { --card-color: var(--accent-math); }
+        .cat-card[data-cat="CHIMIE"]        { --card-color: var(--accent-chem); }
+        .cat-card[data-cat="INFORMATIQUE"]  { --card-color: var(--accent-info); }
+
+        /* ===== QUIZ ===== */
+        #quiz {
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 32px 20px;
+        }
+
+        .quiz-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 720px;
+            margin-bottom: 32px;
+        }
+
+        .back-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.82rem;
+            transition: all .2s;
+        }
+        .back-btn:hover { border-color: var(--text); color: var(--text); }
+
+        .progress-wrap { flex: 1; margin: 0 24px; }
+
+        .progress-bar { height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--cat-color, #fff); border-radius: 4px; transition: width .4s ease; }
+
+        .question-counter {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.82rem;
+            color: var(--muted);
+            text-align: center;
+            margin-top: 6px;
+        }
+
+        .score-badge {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.9rem;
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .question-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 36px;
+            width: 100%;
+            max-width: 720px;
+            margin-bottom: 24px;
+        }
+
+        .question-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+
+        .difficulty-tag {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .difficulty-tag.FACILE   { background: rgba(74,222,128,.1); color: #4ade80; }
+        .difficulty-tag.MEDIUM   { background: rgba(251,191,36,.1);  color: #fbbf24; }
+        .difficulty-tag.DIFFICILE { background: rgba(248,113,113,.1); color: #f87171; }
+
+        .question-text { font-size: clamp(1rem, 2.5vw, 1.2rem); font-weight: 600; line-height: 1.6; }
+
+        .options { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 720px; }
+
+        .option-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 22px;
+            color: var(--text);
+            font-family: 'Syne', sans-serif;
+            font-size: 0.95rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all .2s;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .option-btn:hover:not(:disabled) { border-color: var(--cat-color, rgba(255,255,255,.3)); background: rgba(255,255,255,.03); }
+
+        .opt-letter {
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            background: var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+            transition: all .2s;
+        }
+
+        .option-btn.correct { border-color: var(--correct); background: rgba(74,222,128,.08); }
+        .option-btn.correct .opt-letter { background: var(--correct); color: #0a0a0f; }
+        .option-btn.wrong   { border-color: var(--wrong);   background: rgba(248,113,113,.08); }
+        .option-btn.wrong .opt-letter   { background: var(--wrong);   color: #0a0a0f; }
+        .option-btn:disabled { cursor: not-allowed; }
+
+        .explanation-box {
+            background: rgba(255,255,255,.04);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-size: 0.9rem;
+            color: var(--muted);
+            line-height: 1.6;
+            width: 100%;
+            max-width: 720px;
+            display: none;
+        }
+        .explanation-box.show { display: block; }
+        .explanation-box strong { color: var(--text); }
+
+        .next-btn {
+            margin-top: 8px;
+            padding: 14px 36px;
+            background: var(--cat-color, white);
+            color: var(--bg);
+            border: none;
+            border-radius: 12px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all .2s;
+            display: none;
+        }
+        .next-btn.show { display: block; }
+        .next-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+        /* ===== RESULTS ===== */
+        #results {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .result-label { font-size: 1.1rem; color: var(--muted); margin-bottom: 4px; }
+
+        .result-score {
+            font-size: clamp(4rem, 12vw, 8rem);
+            font-weight: 800;
+            line-height: 1;
+            background: linear-gradient(135deg, var(--cat-color, #fff) 0%, rgba(255,255,255,.4) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .result-percent { font-family: 'DM Mono', monospace; font-size: 1rem; color: var(--muted); margin-bottom: 48px; }
+        .result-message { font-size: 1.4rem; font-weight: 700; margin-bottom: 48px; max-width: 400px; }
+
+        .result-actions { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+
+        .btn-primary {
+            padding: 14px 32px;
+            background: var(--cat-color, white);
+            color: var(--bg);
+            border: none;
+            border-radius: 12px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .btn-primary:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+        .btn-secondary {
+            padding: 14px 32px;
+            background: none;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .btn-secondary:hover { border-color: rgba(255,255,255,.3); }
+
+        .leaderboard { width: 100%; max-width: 480px; margin-top: 48px; }
+
+        .lb-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--muted);
+            font-family: 'DM Mono', monospace;
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .lb-row {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .lb-rank { font-family: 'DM Mono', monospace; width: 28px; color: var(--muted); font-size: 0.8rem; }
+        .lb-name { flex: 1; font-weight: 600; }
+        .lb-score { font-family: 'DM Mono', monospace; font-size: 0.85rem; color: var(--cat-color, var(--text)); }
+
+        .toast {
+            position: fixed;
+            bottom: 24px; left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 24px;
+            font-size: 0.9rem;
+            z-index: 1000;
+            transition: transform .3s cubic-bezier(.4,0,.2,1);
+            pointer-events: none;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        @media (max-width: 600px) {
+            .categories { grid-template-columns: 1fr; }
+            .question-card { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- PAGE ACCUEIL -->
+<div id="home" class="page active">
+    <div class="logo">QuizMaster</div>
+    <p class="tagline">Anglais · Maths · Chimie · Informatique</p>
+
+    <div class="name-input-wrap">
+        <label>Votre prénom</label>
+        <input type="text" id="playerName" placeholder="Ex: Marie" maxlength="30">
+    </div>
+
+    <div class="categories">
+        <div class="cat-card" data-cat="ANGLAIS" onclick="startQuiz('ANGLAIS')">
+            <span class="icon">🇬🇧</span>
+            <span class="cat-count" id="count-ANGLAIS">…</span>
+            <div class="cat-name">Anglais</div>
+            <div class="cat-desc">Grammaire, vocabulaire et conjugaison</div>
+        </div>
+        <div class="cat-card" data-cat="MATHEMATIQUES" onclick="startQuiz('MATHEMATIQUES')">
+            <span class="icon">∑</span>
+            <span class="cat-count" id="count-MATHEMATIQUES">…</span>
+            <div class="cat-name">Mathématiques</div>
+            <div class="cat-desc">Algèbre, trigonométrie et calcul</div>
+        </div>
+        <div class="cat-card" data-cat="CHIMIE" onclick="startQuiz('CHIMIE')">
+            <span class="icon">⚗️</span>
+            <span class="cat-count" id="count-CHIMIE">…</span>
+            <div class="cat-name">Chimie</div>
+            <div class="cat-desc">Tableau périodique, liaisons et réactions</div>
+        </div>
+        <div class="cat-card" data-cat="INFORMATIQUE" onclick="startQuiz('INFORMATIQUE')">
+            <span class="icon">💻</span>
+            <span class="cat-count" id="count-INFORMATIQUE">…</span>
+            <div class="cat-name">Informatique</div>
+            <div class="cat-desc">Algorithmes, réseaux et design patterns</div>
+        </div>
+    </div>
+</div>
+
+<!-- PAGE QUIZ -->
+<div id="quiz" class="page">
+    <div class="quiz-header">
+        <button class="back-btn" onclick="goHome()">← Retour</button>
+        <div class="progress-wrap">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="question-counter" id="questionCounter">1 / 10</div>
+        </div>
+        <div class="score-badge">Score: <span id="currentScore">0</span></div>
+    </div>
+
+    <div class="question-card">
+        <div class="question-meta">
+            <span class="difficulty-tag" id="difficultyTag">MEDIUM</span>
+        </div>
+        <div class="question-text" id="questionText">Chargement…</div>
+    </div>
+
+    <div class="options" id="optionsContainer"></div>
+
+    <div class="explanation-box" id="explanationBox">
+        <strong>Explication :</strong> <span id="explanationText"></span>
+    </div>
+
+    <button class="next-btn" id="nextBtn" onclick="nextQuestion()">Question suivante →</button>
+</div>
+
+<!-- PAGE RÉSULTATS -->
+<div id="results" class="page">
+    <div class="result-label">Résultat final</div>
+    <div class="result-score" id="resultScore">8/10</div>
+    <div class="result-percent" id="resultPercent">80%</div>
+    <div class="result-message" id="resultMessage">Excellent travail ! 🎉</div>
+
+    <div class="result-actions">
+        <button class="btn-primary" onclick="replayQuiz()">Rejouer</button>
+        <button class="btn-secondary" onclick="goHome()">Changer de catégorie</button>
+    </div>
+
+    <div class="leaderboard">
+        <div class="lb-title">🏆 Meilleurs scores</div>
+        <div id="leaderboardList"></div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+    const API = '/api/quiz';
+    let questions = [], currentIndex = 0, score = 0;
+    let currentCategory = '', currentAnswered = false;
+
+    const catColors = {
+        ANGLAIS: '#00d4ff',
+        MATHEMATIQUES: '#ff6b35',
+        CHIMIE: '#a8ff78',
+        INFORMATIQUE: '#c084fc'
+    };
+
+    async function init() {
+        try {
+            const stats = await fetch(`${API}/stats`).then(r => r.json());
+            for (const [cat, count] of Object.entries(stats)) {
+                const el = document.getElementById(`count-${cat}`);
+                if (el) el.textContent = `${count} questions`;
+            }
+        } catch(e) {
+            console.log('Serveur non disponible, mode démo actif.');
+        }
+    }
+
+    function showPage(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function goHome() { showPage('home'); }
+
+    function applyColor(color) {
+        document.documentElement.style.setProperty('--cat-color', color);
+    }
+
+    async function startQuiz(category) {
+        const name = document.getElementById('playerName').value.trim();
+        if (!name) { showToast('Entrez votre prénom pour commencer !'); return; }
+
+        currentCategory = category;
+        applyColor(catColors[category]);
+
+        try {
+            const resp = await fetch(`${API}/questions/${category}?limit=10`);
+            if (!resp.ok) throw new Error();
+            questions = await resp.json();
+        } catch(e) {
+            showToast('Erreur de connexion au serveur.');
+            return;
+        }
+
+        score = 0;
+        currentIndex = 0;
+        showPage('quiz');
+        renderQuestion();
+    }
+
+    function renderQuestion() {
+        const q = questions[currentIndex];
+        currentAnswered = false;
+
+        document.getElementById('progressFill').style.width = `${(currentIndex / questions.length) * 100}%`;
+        document.getElementById('questionCounter').textContent = `${currentIndex + 1} / ${questions.length}`;
+        document.getElementById('currentScore').textContent = score;
+        document.getElementById('questionText').textContent = q.questionText;
+        document.getElementById('difficultyTag').textContent = q.difficulty || 'MEDIUM';
+        document.getElementById('difficultyTag').className = `difficulty-tag ${q.difficulty || 'MEDIUM'}`;
+
+        const container = document.getElementById('optionsContainer');
+        container.innerHTML = '';
+        q.options.forEach((opt, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = `<span class="opt-letter">${String.fromCharCode(65 + i)}</span>${opt}`;
+            btn.onclick = () => selectAnswer(i, btn);
+            container.appendChild(btn);
+        });
+
+        document.getElementById('explanationBox').classList.remove('show');
+        document.getElementById('nextBtn').classList.remove('show');
+    }
+
+    async function selectAnswer(index, btn) {
+        if (currentAnswered) return;
+        currentAnswered = true;
+
+        const q = questions[currentIndex];
+        let correct = false, correctIdx = -1, explanation = '';
+
+        try {
+            const resp = await fetch(`${API}/check`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ questionId: q.id, answerIndex: index })
+            });
+            const data = await resp.json();
+            correct = data.correct;
+            correctIdx = data.correctIndex;
+            explanation = data.explanation;
+        } catch(e) {
+            showToast('Erreur de connexion.');
+            return;
+        }
+
+        const btns = document.querySelectorAll('.option-btn');
+        btns.forEach(b => b.disabled = true);
+        btns[index].classList.add(correct ? 'correct' : 'wrong');
+        if (!correct && correctIdx >= 0) btns[correctIdx].classList.add('correct');
+
+        if (correct) score++;
+        document.getElementById('currentScore').textContent = score;
+
+        if (explanation) {
+            document.getElementById('explanationText').textContent = explanation;
+            document.getElementById('explanationBox').classList.add('show');
+        }
+
+        const nextBtn = document.getElementById('nextBtn');
+        nextBtn.textContent = currentIndex === questions.length - 1 ? 'Voir les résultats →' : 'Question suivante →';
+        nextBtn.classList.add('show');
+    }
+
+    async function nextQuestion() {
+        currentIndex++;
+        if (currentIndex >= questions.length) {
+            await showResults();
+        } else {
+            renderQuestion();
+        }
+    }
+
+    async function showResults() {
+        const total = questions.length;
+        const pct = Math.round((score / total) * 100);
+
+        document.getElementById('resultScore').textContent = `${score}/${total}`;
+        document.getElementById('resultPercent').textContent = `${pct}%`;
+
+        let msg = '';
+        if (pct === 100) msg = 'Parfait ! Vous êtes un génie ! 🏆';
+        else if (pct >= 80) msg = 'Excellent travail ! 🎉';
+        else if (pct >= 60) msg = 'Bien joué, continuez ! 💪';
+        else if (pct >= 40) msg = 'Pas mal, encore un effort ! 📚';
+        else msg = 'Révisez et réessayez ! 🔄';
+
+        document.getElementById('resultMessage').textContent = msg;
+        showPage('results');
+
+        const name = document.getElementById('playerName').value.trim();
+        try {
+            await fetch(`${API}/session`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerName: name, category: currentCategory, score, total })
+            });
+            await loadLeaderboard();
+        } catch(e) {}
+    }
+
+    async function loadLeaderboard() {
+        try {
+            const sessions = await fetch(`${API}/leaderboard/${currentCategory}`).then(r => r.json());
+            const list = document.getElementById('leaderboardList');
+            list.innerHTML = '';
+            sessions.slice(0, 5).forEach((s, i) => {
+                const pct = Math.round((s.score / s.totalQuestions) * 100);
+                const row = document.createElement('div');
+                row.className = 'lb-row';
+                row.innerHTML = `<span class="lb-rank">#${i + 1}</span><span class="lb-name">${s.playerName}</span><span class="lb-score">${s.score}/${s.totalQuestions} (${pct}%)</span>`;
+                list.appendChild(row);
+            });
+        } catch(e) {}
+    }
+
+    function replayQuiz() { startQuiz(currentCategory); }
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    init();
+</script>
+</body>
+</html>
